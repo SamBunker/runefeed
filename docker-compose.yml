@@ -2,10 +2,7 @@ services:
   # ── RuneFeed Server — WebSocket API ──
   # Polls the OSRS Wiki API, detects spikes, broadcasts to clients.
   runefeed-server:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    pull_policy: build
+    image: ghcr.io/sambunker/runefeed:latest
     ports:
       - "3900:3900"
     volumes:
