@@ -38,6 +38,7 @@ export class Poller {
   private headlineTracker: Map<number, { alert: Alert; consecutiveCycles: number }> = new Map();
   private currentHeadline: TrendingHeadline | null = null;
 
+
   constructor(config: AppConfig, excludedItems: string[], resourceItems: string[]) {
     this.config = config;
     this.api = new OsrsApiClient(config);
@@ -56,6 +57,7 @@ export class Poller {
       if (this.currentHeadline) {
         this.wsServer.sendTo(ws, { type: 'headline', data: this.currentHeadline });
       }
+
     });
   }
 

@@ -47,6 +47,6 @@
   },
   "api": {
     "baseUrl": "https://prices.runescape.wiki/api/v1/osrs",
-    "userAgent": "RuneFeed/1.0.0 - @yourdiscord on Discord"
+    "userAgent": "RuneFeed/1.0.0 - @notleumas on Discord"
   }
 }
