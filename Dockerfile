@@ -20,9 +20,10 @@ COPY --from=build /build/dist ./dist
 COPY --from=build /build/node_modules ./node_modules
 COPY package.json ./
 
-# Config and data directories are mounted as volumes
-# so they persist across container rebuilds
-RUN mkdir -p /app/config /app/data
+# Copy default config into the image (at dist/config/ where the code expects it)
+# Volume mount can override at runtime
+COPY config/ ./dist/config/
+RUN mkdir -p /app/data
 
 EXPOSE 3900
 
