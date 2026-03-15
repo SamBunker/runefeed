@@ -4,14 +4,19 @@
 // This helps you verify what settings are active without opening JSON files.
 
 import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import type { AppConfig } from '../../shared/types.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const configDir = join(__dirname, '..', '..', 'config');
 
 export function showConfig(): void {
   // ── Load config ──
   let config: AppConfig;
   try {
-    config = JSON.parse(readFileSync('./config/default.json', 'utf-8'));
+    config = JSON.parse(readFileSync(join(configDir, 'default.json'), 'utf-8'));
   } catch (err) {
     console.error(chalk.red('Could not read config/default.json'));
     process.exit(1);
@@ -20,7 +25,7 @@ export function showConfig(): void {
   // ── Load exclude list ──
   let excludedItems: string[] = [];
   try {
-    const data = JSON.parse(readFileSync('./config/exclude.json', 'utf-8'));
+    const data = JSON.parse(readFileSync(join(configDir, 'exclude.json'), 'utf-8'));
     excludedItems = data.excludedItems ?? [];
   } catch {
     // No exclude file — that's fine
@@ -29,7 +34,7 @@ export function showConfig(): void {
   // ── Display ──
   console.log('');
   console.log(chalk.bold.cyan('RuneFeed — Current Configuration'));
-  console.log(chalk.dim('  Source: ./config/default.json'));
+  console.log(chalk.dim(`  Source: ${join(configDir, 'default.json')}`));
   console.log('');
   console.log(chalk.dim('──────────────────────────────────────────────────────────────'));
   console.log('');
@@ -101,7 +106,7 @@ export function showConfig(): void {
   // ── Load resource list ──
   let resourceItems: string[] = [];
   try {
-    const data = JSON.parse(readFileSync('./config/resources.json', 'utf-8'));
+    const data = JSON.parse(readFileSync(join(configDir, 'resources.json'), 'utf-8'));
     resourceItems = data.resourceItems ?? [];
   } catch {
     // No resource file — that's fine

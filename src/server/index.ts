@@ -8,8 +8,17 @@
 // You can also set NODE_ENV=production to get the same effect.
 
 import { readFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { Poller } from './poller.js';
 import type { AppConfig } from '../shared/types.js';
+
+// Resolve paths relative to the package root, not the working directory.
+// This is critical for npm global installs where the user runs `runefeed serve`
+// from any directory — we need to find config/ next to dist/, not in their cwd.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PKG_ROOT = join(__dirname, '..');  // dist/server/ → dist/ → package root
+const configDir = join(PKG_ROOT, 'config');
 
 // ── ASCII Banner ──
 const BANNER = `
@@ -31,7 +40,7 @@ export async function main(production = false): Promise<void> {
 
   // ── Determine mode ──
   const isProduction = production || process.env.NODE_ENV === 'production';
-  const configFile = isProduction ? './config/production.json' : './config/default.json';
+  const configFile = join(configDir, isProduction ? 'production.json' : 'default.json');
 
   if (isProduction) {
     console.log('  \x1b[35m⬤ PRODUCTION MODE\x1b[0m — TLS enabled, strict security');
@@ -64,7 +73,7 @@ export async function main(production = false): Promise<void> {
   let excludedItems: string[] = [];
   try {
     const excludeData = JSON.parse(
-      readFileSync('./config/exclude.json', 'utf-8'),
+      readFileSync(join(configDir, 'exclude.json'), 'utf-8'),
     );
     excludedItems = excludeData.excludedItems ?? [];
   } catch {
@@ -75,7 +84,7 @@ export async function main(production = false): Promise<void> {
   let resourceItems: string[] = [];
   try {
     const resourceData = JSON.parse(
-      readFileSync('./config/resources.json', 'utf-8'),
+      readFileSync(join(configDir, 'resources.json'), 'utf-8'),
     );
     resourceItems = resourceData.resourceItems ?? [];
     console.log(`  \x1b[32m✓\x1b[0m ${resourceItems.length} resource item(s) loaded`);
