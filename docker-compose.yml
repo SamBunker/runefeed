@@ -11,4 +11,10 @@ services:
     volumes:
       - ./config:/app/config
       - ./data:/app/data
+    networks:
+      - d-nginx_default
     restart: unless-stopped
+
+networks:
+  d-nginx_default:
+    external: true
