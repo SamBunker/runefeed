@@ -21,7 +21,7 @@ function collect(value: string, previous: string[]): string[] {
 
 program
   .name('runefeed')
-  .description('RuneFeed — Grand Exchange Watcher for OSRS')
+  .description('RuneFeed — Real-Time Grand Exchange Volume Feed for OSRS')
   .version('1.0.0');
 
 // ── runefeed serve ──
