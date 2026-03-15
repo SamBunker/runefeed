@@ -1,0 +1,52 @@
+{
+  "server": {
+    "port": 443,
+    "host": "0.0.0.0",
+    "mode": "production",
+    "tls": {
+      "enabled": true,
+      "certPath": "/etc/letsencrypt/live/feed.runefeed.cc/fullchain.pem",
+      "keyPath": "/etc/letsencrypt/live/feed.runefeed.cc/privkey.pem"
+    },
+    "security": {
+      "maxClients": 200,
+      "maxConnectionsPerIp": 5,
+      "maxIncomingMessageBytes": 4096,
+      "maxTrackItems": 50,
+      "maxTrackItemLength": 100,
+      "maxMessagesPerMinute": 10,
+      "idleTimeoutMs": 600000
+    }
+  },
+  "polling": {
+    "fiveMinIntervalMs": 300000,
+    "latestIntervalMs": 60000
+  },
+  "detection": {
+    "spikeThreshold": 10,
+    "minVolume": 100,
+    "minItemValue": 0,
+    "maxItemValue": 0,
+    "rollingWindowSize": 12,
+    "sellOffDominance": 0.70,
+    "buyInDominance": 0.70,
+    "timeframes": ["5m", "10m", "30m"],
+    "priceChangeThreshold": 5
+  },
+  "tax": {
+    "taxRate": 0.02,
+    "taxCap": 5000000
+  },
+  "display": {
+    "staggerEnabled": false,
+    "staggerDelayMs": 200
+  },
+  "output": {
+    "alertsFile": "./data/alerts.json",
+    "maxAlertsInFile": 10000
+  },
+  "api": {
+    "baseUrl": "https://prices.runescape.wiki/api/v1/osrs",
+    "userAgent": "RuneFeed/1.0.0 - @yourdiscord on Discord"
+  }
+}

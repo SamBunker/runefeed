@@ -1,0 +1,11 @@
+src/
+website/
+docker-compose.yml
+Dockerfile
+tsconfig.json
+*.ts
+.claude/
+SPECS.md
+SIMULATION.md
+.git/
+node_modules/

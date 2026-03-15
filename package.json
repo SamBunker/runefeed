@@ -1,0 +1,37 @@
+{
+  "name": "runefeed",
+  "version": "1.0.0",
+  "description": "RuneFeed — Real-time OSRS Grand Exchange volume feed",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SamBunker/runefeed"
+  },
+  "keywords": ["osrs", "runescape", "grand-exchange", "cli", "volume", "trading"],
+  "files": ["dist/", "config/", "package.json", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "module",
+  "bin": {
+    "runefeed": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev:server": "node --loader ts-node/esm src/server/index.ts",
+    "dev:cli": "node --loader ts-node/esm src/cli/index.ts",
+    "start:server": "node dist/server/index.js",
+    "start:cli": "node dist/cli/index.js"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "ws": "^8.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/ws": "^8.5.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.0"
+  }
+}
