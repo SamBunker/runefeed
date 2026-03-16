@@ -230,7 +230,8 @@ export class Poller {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`    \x1b[33m⚠\x1b[0m Poll cycle #${cycleNum} failed: ${msg}`);
-      this.wsServer.broadcast({ type: 'error', message: `Poll cycle failed: ${msg}` });
+      // Send a generic error to clients — never leak internal details
+      this.wsServer.broadcast({ type: 'error', message: 'Poll cycle failed — retrying next interval' });
     }
   }
 

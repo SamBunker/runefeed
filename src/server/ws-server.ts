@@ -34,6 +34,9 @@ export class RuneFeedWSServer {
   // Rate limiting: message timestamps per client
   private messageTimestamps: Map<WebSocket, number[]> = new Map();
 
+  // Rate limit violations per client — disconnect after repeated violations
+  private rateLimitStrikes: Map<WebSocket, number> = new Map();
+
   // Security config values (set from ServerConfig)
   private maxClients: number;
   private maxConnectionsPerIp: number;
@@ -155,33 +158,58 @@ export class RuneFeedWSServer {
     }
 
     // ── Handle incoming messages (with validation) ──
+    this.rateLimitStrikes.set(ws, 0);
+
     ws.on('message', (raw) => {
       // Rate limit check (in local mode the limit is very high, so this
       // won't trigger unless something is genuinely wrong)
       if (!this.checkRateLimit(ws)) {
+        const strikes = (this.rateLimitStrikes.get(ws) ?? 0) + 1;
+        this.rateLimitStrikes.set(ws, strikes);
+        // Disconnect after 3 rate limit violations — they're clearly abusing
+        if (strikes >= 3) {
+          console.warn(`  \x1b[33m⚠\x1b[0m Disconnecting client for repeated rate limit violations (${clientIp})`);
+          ws.close(1008, 'Rate limit exceeded');
+        }
         return;
       }
 
       try {
-        const rawStr = raw.toString();
-        if (rawStr.length > this.maxIncomingMessageBytes) return;
+        // ws library already enforces maxPayload at the byte level.
+        // This is a defense-in-depth check using byte length, not char count.
+        const rawBuf = Buffer.isBuffer(raw) ? raw : Buffer.from(raw as ArrayBuffer);
+        if (rawBuf.byteLength > this.maxIncomingMessageBytes) return;
+        const rawStr = rawBuf.toString();
 
         const msg = JSON.parse(rawStr);
+
+        // Reject prototype pollution attempts
+        if (typeof msg !== 'object' || msg === null) return;
+        if ('__proto__' in msg || 'constructor' in msg || 'prototype' in msg) return;
 
         // Whitelist approach: only accept known message types
         if (msg.type === 'subscribe-tracks') {
           this.handleSubscribeTracks(ws, msg);
         }
+        // All other message types are silently dropped.
+        // The server ONLY accepts subscribe-tracks from clients.
       } catch {
         // Malformed JSON — ignore silently
       }
     });
 
     // ── Cleanup on disconnect ──
+    // Guard against double-cleanup: ws 'error' is often followed by 'close'.
+    // Without the guard, the IP counter desyncs and allows limit bypass.
+    let cleaned = false;
     const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+
       this.clients.delete(ws);
       this.clientTracks.delete(ws);
       this.messageTimestamps.delete(ws);
+      this.rateLimitStrikes.delete(ws);
       if (pingInterval) clearInterval(pingInterval);
 
       const count = this.ipConnections.get(clientIp) ?? 1;
@@ -202,17 +230,57 @@ export class RuneFeedWSServer {
   }
 
   /**
-   * Extract client IP, respecting X-Forwarded-For when behind a reverse proxy.
-   * In local mode you're not behind a proxy, so this just returns the socket IP.
+   * Extract client IP from trusted proxy headers.
+   *
+   * Trust chain: Cloudflare → NPM → Server
+   *
+   * We only read forwarded headers if the direct connection comes from
+   * a known proxy IP (Docker network / localhost). This prevents clients
+   * from spoofing X-Forwarded-For to bypass per-IP rate limits.
    */
   private getClientIp(req: IncomingMessage): string {
+    const directIp = req.socket.remoteAddress ?? 'unknown';
+
     if (this.mode === 'production') {
-      const forwarded = req.headers['x-forwarded-for'];
-      if (typeof forwarded === 'string') {
-        return forwarded.split(',')[0].trim();
+      // Only trust proxy headers from known reverse proxy IPs
+      if (this.isTrustedProxy(directIp)) {
+        // Prefer CF-Connecting-IP (Cloudflare's real client IP)
+        const cfIp = req.headers['cf-connecting-ip'];
+        if (typeof cfIp === 'string' && this.isValidIp(cfIp)) {
+          return cfIp.trim();
+        }
+        // Fall back to X-Forwarded-For (first IP in the chain)
+        const forwarded = req.headers['x-forwarded-for'];
+        if (typeof forwarded === 'string') {
+          const first = forwarded.split(',')[0].trim();
+          if (this.isValidIp(first)) return first;
+        }
       }
     }
-    return req.socket.remoteAddress ?? 'unknown';
+
+    return directIp;
+  }
+
+  /**
+   * Check if the direct connection is from a known reverse proxy.
+   * Docker bridge (172.x), localhost, or NPM on the local network.
+   */
+  private isTrustedProxy(ip: string): boolean {
+    const cleaned = ip.replace(/^::ffff:/, '');
+    return (
+      cleaned === '127.0.0.1' ||
+      cleaned === '::1' ||
+      cleaned.startsWith('172.') ||
+      cleaned.startsWith('10.') ||
+      cleaned.startsWith('192.168.')
+    );
+  }
+
+  /**
+   * Basic IP format validation to prevent log injection via headers.
+   */
+  private isValidIp(value: string): boolean {
+    return /^[\d.:a-fA-F]+$/.test(value) && value.length <= 45;
   }
 
   /**
@@ -248,6 +316,9 @@ export class RuneFeedWSServer {
     for (const item of obj.items) {
       if (typeof item !== 'string') continue;
       if (item.length === 0 || item.length > this.maxTrackItemLength) continue;
+      // Only allow printable ASCII (letters, numbers, spaces, hyphens, apostrophes)
+      // This matches OSRS item naming conventions and blocks control chars / ANSI
+      if (!/^[a-zA-Z0-9 '\-()]+$/.test(item)) continue;
       if (items.length >= this.maxTrackItems) break;
       items.push(item.toLowerCase());
     }

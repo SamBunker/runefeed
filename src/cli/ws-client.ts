@@ -4,6 +4,7 @@ import WebSocket from 'ws';
 import type { WSMessage, TrendingHeadline } from '../shared/types.js';
 import { renderAlert, renderPrediction, renderBanner, renderHeadline, renderSystemMessage } from './display.js';
 import type { DisplayOptions } from './display.js';
+import { safeJsonParse } from './sanitize.js';
 
 const MAX_RETRIES = 5;
 const RETRY_DELAY_MS = 10_000;
@@ -106,7 +107,10 @@ function connectOnce(url: string, options: WatchOptions): Promise<void> {
 
     ws.on('message', (raw: WebSocket.RawData) => {
       try {
-        const msg: WSMessage = JSON.parse(raw.toString());
+        // safeJsonParse strips ANSI escape sequences from all string fields
+        // and rejects __proto__/constructor keys to prevent prototype pollution.
+        // This defends against malicious servers sending terminal injection payloads.
+        const msg: WSMessage = safeJsonParse(raw.toString());
         handleMessage(msg, options, displayOpts);
       } catch {
         // Malformed message — ignore

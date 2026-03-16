@@ -60,6 +60,12 @@ export async function runSetup(): Promise<ClientConfig> {
         console.log('  \x1b[31mHost cannot be empty.\x1b[0m');
         continue;
       }
+      // Validate hostname: reject URL metacharacters that could cause
+      // the WebSocket URL to be parsed incorrectly
+      if (!/^[a-zA-Z0-9.\-:[\]]+$/.test(host)) {
+        console.log('  \x1b[31mInvalid hostname. Use letters, numbers, dots, and hyphens only.\x1b[0m');
+        continue;
+      }
       const portStr = await ask(rl, '  Port [3900]: ');
       const port = portStr ? Number(portStr) : 3900;
       if (isNaN(port) || port < 1 || port > 65535) {
